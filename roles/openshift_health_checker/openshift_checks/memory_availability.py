@@ -14,7 +14,7 @@ class MemoryAvailability(OpenShiftCheck):
     # Values taken from the official installation documentation:
     # https://docs.openshift.org/latest/install_config/install/prerequisites.html#system-requirements
     recommended_memory_bytes = {
-        "masters": 16 * GIB,
+        "masters": 8 * GIB, #Changed from 16 GB
         "nodes": 8 * GIB,
         "etcd": 8 * GIB,
     }
