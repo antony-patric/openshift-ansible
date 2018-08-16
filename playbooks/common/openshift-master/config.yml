@@ -167,6 +167,9 @@
   hosts: oo_masters_to_config
   any_errors_fatal: true
   vars:
+    openshift_master_console_port:  443
+    openshift_master_api_port:  443
+    openshift_master_cluster_method:  native
     openshift_master_ha: "{{ openshift.master.ha }}"
     openshift_master_count: "{{ openshift.master.master_count }}"
     openshift_master_session_auth_secrets: "{{ hostvars[groups.oo_first_master.0].openshift.master.session_auth_secrets }}"

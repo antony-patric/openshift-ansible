@@ -1011,7 +1011,7 @@ def set_sdn_facts_if_unset(facts, system_facts):
     if 'master' in facts:
         # set defaults for sdn_cluster_network_cidr and sdn_host_subnet_length
         # these might be overridden if they exist in the master config file
-        sdn_cluster_network_cidr = '10.128.0.0/14'
+        sdn_cluster_network_cidr = '172.16.0.0/16' #'10.128.0.0/14' - Changing the default value as it conflicts with the host ip
         sdn_host_subnet_length = '9'
 
         master_cfg_path = os.path.join(facts['common']['config_base'],
