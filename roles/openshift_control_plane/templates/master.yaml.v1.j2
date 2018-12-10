@@ -19,8 +19,8 @@ authConfig:
     - X-Remote-Extra-
 apiLevels:
 - v1
-{% if openshift_master_audit_config is defined %}
-auditConfig:{{ openshift_master_audit_config | lib_utils_to_padded_yaml(level=1) }}
+{% if openshift.master.audit_config is defined %}
+auditConfig:{{ openshift.master.audit_config | lib_utils_to_padded_yaml(level=1) }}
 {% endif %}
 controllerConfig:
   election:
@@ -73,6 +73,10 @@ kubeletClientInfo:
 kubernetesMasterConfig:
   apiServerArguments:
     {{ openshift.master.api_server_args | default(None) | lib_utils_to_padded_yaml( level=2 ) }}
+{% if openshift_encryption_config is defined %}
+    experimental-encryption-provider-config:
+    - {{ openshift_encryption_config_file }}
+{% endif %}
     storage-backend:
     - etcd3
     storage-media-type:

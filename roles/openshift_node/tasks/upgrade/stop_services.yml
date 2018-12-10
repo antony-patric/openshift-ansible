@@ -1,11 +1,17 @@
 ---
-- name: Stop node and openvswitch services
+- name: Stop node services
   service:
     name: "{{ item }}"
     state: stopped
   with_items:
-  - openvswitch
   - "{{ openshift_service_type }}-node"
+  failed_when: false
+
+- name: Stop openvswitch service
+  service:
+    name: openvswitch
+    state: stopped
+  when: not openshift_use_nsx | default(false) | bool
   failed_when: false
 
 - service:
@@ -23,11 +29,11 @@
   service:
     name: cri-o
     state: stopped
-  when: openshift_use_crio | default(False)
+  when: openshift_use_crio | bool
 
 # TODO: Need to determine if this is needed long term or just 3.9 to 3.10
 # Upgrading cri-o, at least from 1.9 to 1.10, requires that all
 # pods be stopped
 - name: Clean up cri-o pods
   script: clean-up-crio-pods.sh
-  when: openshift_use_crio | default(False)
+  when: openshift_use_crio | bool

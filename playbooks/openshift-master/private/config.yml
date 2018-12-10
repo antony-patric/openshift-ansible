@@ -29,6 +29,9 @@
   - name: Check for RPM generated config marker file .config_managed
     stat:
       path: /etc/origin/.config_managed
+      get_checksum: false
+      get_attributes: false
+      get_mime: false
     register: rpmgenerated_config
 
   - name: Remove RPM generated config files if present
@@ -58,10 +61,6 @@
         console_url: "{{ openshift_master_console_url | default(None) }}"
         console_use_ssl: "{{ openshift_master_console_use_ssl | default(None) }}"
         public_console_url: "{{ openshift_master_public_console_url | default(None) }}"
-  - openshift_facts:
-      role: node
-      local_facts:
-        bootstrapped: true
 
 - name: Generate or retrieve existing session secrets
   hosts: oo_first_master
@@ -91,7 +90,6 @@
     when: openshift_cloudprovider_kind is defined
   - role: openshift_builddefaults
   - role: openshift_buildoverrides
-  - role: nickhammond.logrotate
 
   - role: openshift_control_plane
   - role: tuned

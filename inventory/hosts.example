@@ -51,7 +51,7 @@ openshift_deployment_type=origin
 # use this to lookup the latest exact version of the container images, which is the tag actually used to configure
 # the cluster. For RPM installations we just verify the version detected in your configured repos matches this
 # release.
-openshift_release="3.9"
+openshift_release="3.10"
 
 # default subdomain to use for exposed routes, you should have wildcard dns
 # for *.apps.test.example.com that points at your infra nodes which will run
@@ -73,12 +73,12 @@ debug_level=2
 # Specify an exact container image tag to install or configure.
 # WARNING: This value will be used for all hosts in containerized environments, even those that have another version installed.
 # This could potentially trigger an upgrade and downtime, so be careful with modifying this value after the cluster is set up.
-#openshift_image_tag=v3.9.0
+#openshift_image_tag=v3.10.0
 
 # Specify an exact rpm version to install or configure.
 # WARNING: This value will be used for all hosts in RPM based environments, even those that have another version installed.
 # This could potentially trigger an upgrade and downtime, so be careful with modifying this value after the cluster is set up.
-#openshift_pkg_version=-3.9.0
+#openshift_pkg_version=-3.10.0
 
 # If using Atomic Host, you may specify system container image registry for the nodes:
 #system_images_registry="docker.io"
@@ -117,7 +117,7 @@ debug_level=2
 # these variables are set to the defaults shown. You may override them here.
 # NOTE: You will still need to tag crio nodes with your given label(s)!
 # Enable docker garbage collection when using cri-o
-#openshift_crio_enable_docker_gc=True
+#openshift_crio_enable_docker_gc=False
 # Node Selectors to run the garbage collection
 #openshift_crio_docker_gc_node_selector={'runtime': 'cri-o'}
 
@@ -147,6 +147,8 @@ debug_level=2
 # etcd_debug=true
 # Set etcd log levels by package
 # etcd_log_package_levels="etcdserver=WARNING,security=DEBUG"
+# Comma-separated list of etcd cipher suites
+# etcd_cipher_suites="TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256"
 
 # Upgrade Hooks
 #
@@ -206,7 +208,7 @@ debug_level=2
 #openshift_master_identity_providers=[{'name': 'allow_all', 'login': 'true', 'challenge': 'true', 'kind': 'AllowAllPasswordIdentityProvider'}]
 
 # LDAP auth
-#openshift_master_identity_providers=[{'name': 'my_ldap_provider', 'challenge': 'true', 'login': 'true', 'kind': 'LDAPPasswordIdentityProvider', 'attributes': {'id': ['dn'], 'email': ['mail'], 'name': ['cn'], 'preferredUsername': ['uid']}, 'bindDN': '', 'bindPassword': '', 'ca': 'my-ldap-ca.crt', 'insecure': 'false', 'url': 'ldap://ldap.example.com:389/ou=users,dc=example,dc=com?uid'}]
+#openshift_master_identity_providers=[{'name': 'my_ldap_provider', 'challenge': 'true', 'login': 'true', 'kind': 'LDAPPasswordIdentityProvider', 'attributes': {'id': ['dn'], 'email': ['mail'], 'name': ['cn'], 'preferredUsername': ['uid']}, 'bindDN': '', 'bindPassword': '', 'insecure': 'false', 'url': 'ldap://ldap.example.com:389/ou=users,dc=example,dc=com?uid'}]
 #
 # Configure LDAP CA certificate
 # Specify either the ASCII contents of the certificate or the path to
@@ -220,7 +222,7 @@ debug_level=2
 #openshift_master_ldap_ca_file=<path to local ca file to use>
 
 # OpenID auth
-#openshift_master_identity_providers=[{"name": "openid_auth", "login": "true", "challenge": "false", "kind": "OpenIDIdentityProvider", "client_id": "my_client_id", "client_secret": "my_client_secret", "claims": {"id": ["sub"], "preferredUsername": ["preferred_username"], "name": ["name"], "email": ["email"]}, "urls": {"authorize": "https://myidp.example.com/oauth2/authorize", "token": "https://myidp.example.com/oauth2/token"}, "ca": "my-openid-ca-bundle.crt"}]
+#openshift_master_identity_providers=[{"name": "openid_auth", "login": "true", "challenge": "false", "kind": "OpenIDIdentityProvider", "client_id": "my_client_id", "client_secret": "my_client_secret", "claims": {"id": ["sub"], "preferredUsername": ["preferred_username"], "name": ["name"], "email": ["email"]}, "urls": {"authorize": "https://myidp.example.com/oauth2/authorize", "token": "https://myidp.example.com/oauth2/token"}]
 #
 # Configure OpenID CA certificate
 # Specify either the ASCII contents of the certificate or the path to
@@ -234,7 +236,7 @@ debug_level=2
 #openshift_master_openid_ca_file=<path to local ca file to use>
 
 # Request header auth
-#openshift_master_identity_providers=[{"name": "my_request_header_provider", "challenge": "true", "login": "true", "kind": "RequestHeaderIdentityProvider", "challengeURL": "https://www.example.com/challenging-proxy/oauth/authorize?${query}", "loginURL": "https://www.example.com/login-proxy/oauth/authorize?${query}", "clientCA": "my-request-header-ca.crt", "clientCommonNames": ["my-auth-proxy"], "headers": ["X-Remote-User", "SSO-User"], "emailHeaders": ["X-Remote-User-Email"], "nameHeaders": ["X-Remote-User-Display-Name"], "preferredUsernameHeaders": ["X-Remote-User-Login"]}]
+#openshift_master_identity_providers=[{"name": "my_request_header_provider", "challenge": "true", "login": "true", "kind": "RequestHeaderIdentityProvider", "challengeURL": "https://www.example.com/challenging-proxy/oauth/authorize?${query}", "loginURL": "https://www.example.com/login-proxy/oauth/authorize?${query}", "clientCommonNames": ["my-auth-proxy"], "headers": ["X-Remote-User", "SSO-User"], "emailHeaders": ["X-Remote-User-Email"], "nameHeaders": ["X-Remote-User-Display-Name"], "preferredUsernameHeaders": ["X-Remote-User-Login"]}]
 #
 # Configure request header CA certificate
 # Specify either the ASCII contents of the certificate or the path to
@@ -289,9 +291,17 @@ debug_level=2
 # defined.
 # openshift_gcp_project is the project-id
 #openshift_gcp_project=
+# openshift_gcp_network_project is the project-id where the network-id lives defaults to openshift_gcp_project
+#openshift_gcp_network_project=
+# openshift_gcp_network_name is the network-id
+#openshift_gcp_network_name=
 # openshift_gcp_prefix is a unique string to identify each openshift cluster.
 #openshift_gcp_prefix=
 #openshift_gcp_multizone=False
+# Note: To enable nested virtualization in gcp use the following variable and url
+#openshift_gcp_licenses="https://www.googleapis.com/compute/v1/projects/vm-options/global/licenses/enable-vmx"
+# Additional details regarding nested virtualization are available:
+# https://cloud.google.com/compute/docs/instances/enable-nested-virtualization-vm-instances
 #
 # vSphere
 #openshift_cloudprovider_kind=vsphere
@@ -366,6 +376,10 @@ debug_level=2
 # glusterfs plugin dependencies will be installed, if available.
 #osn_storage_plugin_deps=['ceph','glusterfs','iscsi']
 
+# Configure datastore layer encryption, the encryption key can be gererated
+# with the following command: 'head -c 32 /dev/urandom | base64'
+#openshift_encryption_config="{'kind': 'EncryptionConfig','apiVersion': 'v1','resources': [{'resources': ['secrets'],'providers': [{'aescbc': {'keys': [{'name': 'key1','secret': 'xxxxxxxx'}]}},{'identity': {}}]}]}"
+#
 # OpenShift Router Options
 #
 # An OpenShift router will be created during install if there are
@@ -609,6 +623,8 @@ debug_level=2
 # StorageClass
 # openshift_storageclass_name=gp2
 # openshift_storageclass_parameters={'type': 'gp2', 'encrypted': 'false'}
+# openshift_storageclass_mount_options=['dir_mode=0777', 'file_mode=0777']
+# openshift_storageclass_reclaim_policy="Delete"
 #
 # PersistentLocalStorage
 # If Persistent Local Storage is wanted, this boolean can be defined to True.
@@ -811,7 +827,7 @@ debug_level=2
 #logrotate_scripts=[{"name": "syslog", "path": "/var/log/cron\n/var/log/maillog\n/var/log/messages\n/var/log/secure\n/var/log/spooler\n", "options": ["daily", "rotate 7", "compress", "sharedscripts", "missingok"], "scripts": {"postrotate": "/bin/kill -HUP `cat /var/run/syslogd.pid 2> /dev/null` 2> /dev/null || true"}}]
 
 # The OpenShift-Ansible installer will fail when it detects that the
-# value of openshift_hostname resolves to an IP address not bound to any local
+# value of openshift_kubelet_name_override resolves to an IP address not bound to any local
 # interfaces. This mis-configuration is problematic for any pod leveraging host
 # networking and liveness or readiness probes.
 # Setting this variable to false will override that check.

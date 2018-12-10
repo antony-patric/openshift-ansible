@@ -92,13 +92,6 @@ def _get_hostvars(server, docker_storage_mountpoints):
         hostvars['private_v4'] = server.private_v4
         hostvars['openshift_ip'] = server.private_v4
 
-        # NOTE(shadower): Yes, we set both hostname and IP to the private
-        # IP address for each node. OpenStack doesn't resolve nodes by
-        # name at all, so using a hostname here would require an internal
-        # DNS which would complicate the setup and potentially introduce
-        # performance issues.
-        hostvars['openshift_hostname'] = server.metadata.get(
-            'openshift_hostname', server.private_v4)
     hostvars['openshift_public_hostname'] = server.name
 
     if server.metadata['host-type'] == 'cns':
@@ -176,7 +169,7 @@ def build_inventory():
             stout.get('public_router_ip')
 
         try:
-            inventory['OSEv3']['vars'] = _get_kuryr_vars(cloud, stout)
+            inventory['OSEv3']['vars'].update(_get_kuryr_vars(cloud, stout))
         except KeyError:
             pass  # Not a kuryr deployment
     return inventory

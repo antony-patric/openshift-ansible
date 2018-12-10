@@ -1,29 +1,4 @@
 ---
-- name: Delete pre-existing gluster-s3 resources
-  oc_obj:
-    namespace: "{{ glusterfs_namespace }}"
-    kind: "{{ item.kind }}"
-    name: "{{ item.name | default(omit) }}"
-    selector: "{{ item.selector | default(omit) }}"
-    state: absent
-  with_items:
-  - kind: "all,svc,deploy,secret,sc,pvc"
-    selector: "gluster-s3"
-  failed_when: False
-  when: glusterfs_wipe
-
-- name: Wait for gluster-s3 pods to terminate
-  oc_obj:
-    namespace: "{{ glusterfs_namespace }}"
-    kind: pod
-    state: list
-    selector: "glusterfs=s3-{{ glusterfs_name }}-provisioner-pod"
-  register: gluster_s3_pod
-  until: "gluster_s3_pod.results.results[0]['items'] | count == 0"
-  delay: 10
-  retries: "{{ (glusterfs_timeout | int / 10) | int }}"
-  when: glusterfs_wipe
-
 - name: Create heketi secret
   oc_secret:
     namespace: "{{ glusterfs_namespace }}"
@@ -58,7 +33,7 @@
 
 - name: Generate GlusterFS StorageClass for S3 file
   template:
-    src: "{{ openshift_examples_content_version }}/gluster-s3-storageclass.yml.j2"
+    src: "gluster-s3-storageclass.yml.j2"
     dest: "{{ mktemp.stdout }}/gluster-s3-storageclass.yml"
 
 - name: Create GlusterFS StorageClass for S3
@@ -72,7 +47,7 @@
 - name: Copy gluster-s3 PVCs template file
   copy:
     src: "gluster-s3-pvcs-template.yml"
-    dest: "{{ mktemp.stdout }}/{{ item }}"
+    dest: "{{ mktemp.stdout }}/gluster-s3-pvcs-template.yml"
 
 - name: Create gluster-s3 PVCs template
   oc_obj:
@@ -113,7 +88,7 @@
 - name: Copy gluster-s3 template file
   copy:
     src: "gluster-s3-template.yml"
-    dest: "{{ mktemp.stdout }}/{{ item }}"
+    dest: "{{ mktemp.stdout }}/gluster-s3-template.yml"
 
 - name: Create gluster-s3 template
   oc_obj:

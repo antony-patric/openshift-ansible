@@ -16,7 +16,8 @@ NET_PLUGIN_LIST = (('openshift_use_openshift_sdn', True),
                    ('openshift_use_nuage', False),
                    ('openshift_use_contiv', False),
                    ('openshift_use_calico', False),
-                   ('openshift_use_kuryr', False))
+                   ('openshift_use_kuryr', False),
+                   ('openshift_use_nsx', False))
 
 ENTERPRISE_TAG_REGEX_ERROR = """openshift_image_tag must be in the format
 v#.#[.#[.#]]. Examples: v1.2, v3.4.1, v3.5.1.3,
@@ -33,6 +34,18 @@ ENTERPRISE_TAG_REGEX = {'re': '(^v\\d+\\.\\d+(\\.\\d+)*(-\\d+(\\.\\d+)*)?$)',
                         'error_msg': ENTERPRISE_TAG_REGEX_ERROR}
 IMAGE_TAG_REGEX = {'origin': ORIGIN_TAG_REGEX,
                    'openshift-enterprise': ENTERPRISE_TAG_REGEX}
+
+PKG_VERSION_REGEX_ERROR = """openshift_pkg_version must be in the format
+-[optional.release]. Examples: -3.6.0, -3.7.0-0.126.0.git.0.9351aae.el7 -3.11*
+You specified openshift_pkg_version={}"""
+PKG_VERSION_REGEX = {'re': '(^-.*)',
+                     'error_msg': PKG_VERSION_REGEX_ERROR}
+
+RELEASE_REGEX_ERROR = """openshift_release must be in the format
+v#[.#[.#]]. Examples: v3.9, v3.10.0
+You specified openshift_release={}"""
+RELEASE_REGEX = {'re': '(^v?\\d+(\\.\\d+(\\.\\d+)?)?$)',
+                 'error_msg': RELEASE_REGEX_ERROR}
 
 STORAGE_KIND_TUPLE = (
     'openshift_hosted_registry_storage_kind',
@@ -91,6 +104,11 @@ REMOVED_VARIABLES = (
     ('openshift_storage_glusterfs_registry_block_version', 'openshift_storage_glusterfs_registry_block_image'),
     ('openshift_storage_glusterfs_registry_s3_version', 'openshift_storage_glusterfs_registry_s3_image'),
     ('openshift_storage_glusterfs_registry_heketi_version', 'openshift_storage_glusterfs_registry_heketi_image'),
+    # TODO(michaelgugino): Remove in 3.12
+    ('openshift_cockpit_deployer_prefix', 'openshift_cockpit_deployer_image'),
+    ('openshift_cockpit_deployer_basename', 'openshift_cockpit_deployer_image'),
+    ('openshift_cockpit_deployer_version', 'openshift_cockpit_deployer_image'),
+    ('openshift_hostname', 'Removed: See documentation'),
 )
 
 # TODO(michaelgugino): Remove in 3.11
@@ -182,6 +200,30 @@ class ActionModule(ActionBase):
             msg = msg.format(str(openshift_image_tag))
             raise errors.AnsibleModuleError(msg)
 
+    def check_pkg_version_format(self, hostvars, host):
+        """Ensure openshift_pkg_version is formatted correctly"""
+        openshift_pkg_version = self.template_var(hostvars, host, 'openshift_pkg_version')
+        if not openshift_pkg_version:
+            return None
+        regex_to_match = PKG_VERSION_REGEX['re']
+        res = re.match(regex_to_match, str(openshift_pkg_version))
+        if res is None:
+            msg = PKG_VERSION_REGEX['error_msg']
+            msg = msg.format(str(openshift_pkg_version))
+            raise errors.AnsibleModuleError(msg)
+
+    def check_release_format(self, hostvars, host):
+        """Ensure openshift_release is formatted correctly"""
+        openshift_release = self.template_var(hostvars, host, 'openshift_release')
+        if not openshift_release:
+            return None
+        regex_to_match = RELEASE_REGEX['re']
+        res = re.match(regex_to_match, str(openshift_release))
+        if res is None:
+            msg = RELEASE_REGEX['error_msg']
+            msg = msg.format(str(openshift_release))
+            raise errors.AnsibleModuleError(msg)
+
     def network_plugin_check(self, hostvars, host):
         """Ensure only one type of network plugin is enabled"""
         res = []
@@ -200,10 +242,10 @@ class ActionModule(ActionBase):
             raise errors.AnsibleModuleError(msg)
 
     def check_hostname_vars(self, hostvars, host):
-        """Checks to ensure openshift_hostname
+        """Checks to ensure openshift_kubelet_name_override
            and openshift_public_hostname
            conform to the proper length of 63 characters or less"""
-        for varname in ('openshift_public_hostname', 'openshift_hostname'):
+        for varname in ('openshift_public_hostname', 'openshift_kubelet_name_override'):
             var_value = self.template_var(hostvars, host, varname)
             if var_value and len(var_value) > 63:
                 msg = '{} must be 63 characters or less'.format(varname)
@@ -264,17 +306,20 @@ class ActionModule(ActionBase):
         kind HTPasswdPasswordIdentityProvider and
         openshift_master_manage_htpasswd is False"""
 
+        manage_pass = self.template_var(
+            hostvars, host, 'openshift_master_manage_htpasswd')
+        # default for openshift_master_manage_htpasswd is True.
+        if to_bool(manage_pass) or manage_pass is None:
+            # If we manage the file, we can just generate in the new path.
+            return None
         idps = self.template_var(
             hostvars, host, 'openshift_master_identity_providers')
         if not idps:
             # If we don't find any identity_providers, nothing for us to do.
             return None
-        manage_pass = self.template_var(
-            hostvars, host, 'openshift_master_manage_htpasswd')
-        if to_bool(manage_pass):
-            # If we manage the file, we can just generate in the new path.
-            return None
         old_keys = ('file', 'fileName', 'file_name', 'filename')
+        if not isinstance(idps, list):
+            raise errors.AnsibleModuleError("| not a list")
         for idp in idps:
             if idp['kind'] == 'HTPasswdPasswordIdentityProvider':
                 for old_key in old_keys:
@@ -313,6 +358,8 @@ class ActionModule(ActionBase):
         odt = self.check_openshift_deployment_type(hostvars, host)
         self.check_python_version(hostvars, host, distro)
         self.check_image_tag_format(hostvars, host, odt)
+        self.check_pkg_version_format(hostvars, host)
+        self.check_release_format(hostvars, host)
         self.network_plugin_check(hostvars, host)
         self.check_hostname_vars(hostvars, host)
         self.check_session_auth_secrets(hostvars, host)

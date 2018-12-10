@@ -92,10 +92,8 @@ openshift_node_syscon_add_mounts_l: []
 
 default_r_openshift_node_image_prep_packages:
 - "{{ openshift_service_type }}-node"
-- "{{ openshift_service_type }}-docker-excluder"
 - ansible
 - bash-completion
-- docker
 - dnsmasq
 - ntp
 - logrotate
@@ -118,6 +116,7 @@ default_r_openshift_node_image_prep_packages:
 - cockpit-docker
 - iscsi-initiator-utils
 - ceph-common
+- atomic
 r_openshift_node_image_prep_packages: "{{ default_r_openshift_node_image_prep_packages | union(openshift_node_image_prep_packages | default([])) }}"
 
 r_openshift_node_os_firewall_deny: []
@@ -142,6 +141,8 @@ default_r_openshift_node_os_firewall_allow:
 - service: Kubernetes service NodePort UDP
   port: "{{ openshift_node_port_range | default('') }}/udp"
   cond: "{{ openshift_node_port_range is defined }}"
+- service: Prometheus monitoring
+  port: 9000-10000/tcp
 # Allow multiple port ranges to be added to the role
 r_openshift_node_os_firewall_allow: "{{ default_r_openshift_node_os_firewall_allow | union(openshift_node_open_ports | default([])) }}"
 
@@ -150,7 +151,6 @@ oreg_host: "{{ oreg_url.split('/')[0] if (oreg_url is defined and '.' in oreg_ur
 oreg_auth_credentials_path: "{{ openshift_node_data_dir }}/.docker"
 oreg_auth_credentials_replace: False
 l_bind_docker_reg_auth: False
-openshift_use_crio: False
 l_crio_var_sock: "/var/run/crio/crio.sock"
 openshift_docker_alternative_creds: "{{ openshift_use_crio_only | bool }}"
 

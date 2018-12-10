@@ -33,6 +33,7 @@ openshift_hosted_registry_wait: True
 #  - name: node-config-master
 #    labels:
 #      - 'node-role.kubernetes.io/master=true'
+#      - 'pod_vif=nested-vlan'
 #    edits: []
 #  - name: node-config-infra
 #    labels:
@@ -55,6 +56,8 @@ openshift_hosted_registry_wait: True
 #openshift_cloudprovider_openstack_region: "{{ lookup('env', 'OS_REGION_NAME') }}"
 #openshift_cloudprovider_openstack_blockstorage_version: v2
 
+# Optionally specify a local openstack.conf
+#openshift_cloudprovider_openstack_conf_file: /path/to/openstack.conf
 
 ## Use Cinder volume for Openshift registry:
 #openshift_hosted_registry_storage_kind: openstack

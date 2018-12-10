@@ -14,6 +14,7 @@
 - import_tasks: static_shim.yml
 
 - import_tasks: upgrade/upgrade_scheduler.yml
+- import_tasks: create_ca_files.yml
 
 # master_config_hook is passed in from upgrade play.
 - include_tasks: "upgrade/{{ master_config_hook }}"
@@ -24,12 +25,17 @@
 - name: Check for ca-bundle.crt
   stat:
     path: "{{ openshift.common.config_base }}/master/ca-bundle.crt"
+    get_checksum: false
+    get_attributes: false
+    get_mime: false
   register: ca_bundle_stat
   failed_when: false
 
 - name: Check for ca.crt
   stat:
     path: "{{ openshift.common.config_base }}/master/ca.crt"
+    get_checksum: false
+    get_mime: false
   register: ca_crt_stat
   failed_when: false
 
@@ -74,12 +80,26 @@
   - networkConfig.clusterNetworkCIDR
   - networkConfig.hostSubnetLength
 
+# TODO(michaelgugino): Remove in 3.11
+- name: Check for old master env file
+  stat:
+    path: "/etc/sysconfig/{{ openshift_service_type }}-master-api"
+  register: old_env
 
-- name: Create the master service env file if it does not exist
-  template:
-    src: "master.env.j2"
+# TODO(michaelgugino): Remove in 3.11
+- name: Migrate old master env file to new location
+  master_env_config_migrate:
+    src: "/etc/sysconfig/{{ openshift_service_type }}-master-api"
     dest: "{{ openshift.common.config_base }}/master/master.env"
-    force: no
+  when: old_env.stat.exists
+
+# TODO(michaelgugino): Remove in 3.11
+- name: mv old master env file to .backup
+  command: "mv {{ l_old_env_file }} {{ l_old_env_file_backup }}"
+  vars:
+    l_old_env_file: "/etc/sysconfig/{{ openshift_service_type }}-master-api"
+    l_old_env_file_backup: "/etc/sysconfig/{{ openshift_service_type }}-master-api.backup"
+  when: old_env.stat.exists
 
 - name: Update oreg value
   yedit:
@@ -102,7 +122,7 @@
     state: absent
 - name: Find current value for runtime-config
   yedit:
-    src: "/tmp/master-config.yaml"
+    src: "{{ openshift.common.config_base }}/master/master-config.yaml"
     key: "kubernetesMasterConfig.apiServerArguments.runtime-config"
     state: list
   register: runtime_config
@@ -110,8 +130,17 @@
   yedit:
     src: "{{ openshift.common.config_base }}/master/master-config.yaml"
     key: "kubernetesMasterConfig.apiServerArguments.runtime-config"
-    value: "{{ runtime_config.result | join(',') | regex_replace('(?:,)*apis/settings\\.k8s\\.io/v1alpha1=true','') }}"
-  when: runtime_config.result
+    value: "{{ r_c | difference(['apis/settings.k8s.io/v1alpha1=true']) }}"
+  vars:
+    r_c: "{{ runtime_config.result | default([]) }}"
+
+# The master package gets updated due to the dependencies of the atomic-openshift
+# package when upgrading from 3.9 to 3.10.
+- name: Remove atomic-openshift-master package
+  package:
+    name: "{{ openshift_service_type }}-master"
+    state: absent
+  when: not openshift_is_atomic | bool
 
 - name: Remove old service information
   file:
